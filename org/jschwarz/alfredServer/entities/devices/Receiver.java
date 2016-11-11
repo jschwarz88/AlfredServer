@@ -8,6 +8,7 @@ import org.jschwarz.alfredServer.entities.Device;
 public class Receiver extends Device {
 
 	private int volume = 0;
+	private int newVolume = 0;
 
 	public static int COMMAND_MUTE = 2;
 	public static int COMMAND_UNMUTE = 3;
@@ -30,10 +31,21 @@ public class Receiver extends Device {
 			result = p.waitFor() == 0 ? true : false;
 			logSuccess("sudo /etc/skripte/controlReceiver.sh" + cmd);
 		} else if (cmd > 8) {
-			volume = (cmd < 100) ? (cmd - 90) : (cmd - 900);
-			Process p = new ProcessBuilder("sudo",
-					"/etc/skripte/setReceiverVolume.sh", volume + "").start();
-			result = p.waitFor() == 0 ? true : false;
+			newVolume = (cmd < 100) ? (cmd - 90) : (cmd - 900);
+			// Process p = new ProcessBuilder("sudo",
+			// "/etc/skripte/setReceiverVolume.sh", volume + "").start();
+			if (newVolume - volume > 0) {
+				Process p = new ProcessBuilder("sudo",
+						"/etc/skripte/increaseVolume.sh", (newVolume - volume)
+								+ "").start();
+				result = p.waitFor() == 0 ? true : false;
+			} else if (newVolume - volume < 0) {
+				Process p = new ProcessBuilder("sudo",
+						"/etc/skripte/decreaseVolume.sh", (volume - newVolume)
+								+ "").start();
+				result = p.waitFor() == 0 ? true : false;
+			}
+			volume = newVolume;
 			logSuccess("sudo /etc/skripte/setReceiverVolume.sh " + volume);
 		} else {
 			Logger.log("FEHLER. Unknown command " + cmd + " for DeviceID "
