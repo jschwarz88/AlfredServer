@@ -7,10 +7,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 
-import org.jschwarz.alfredServer.devices.Lamp;
-import org.jschwarz.alfredServer.devices.Projector;
-import org.jschwarz.alfredServer.devices.Receiver;
-import org.jschwarz.alfredServer.devices.TV;
+import org.jschwarz.alfredServer.entities.Device;
+import org.jschwarz.alfredServer.entities.Scene;
+import org.jschwarz.alfredServer.entities.devices.Lamp;
+import org.jschwarz.alfredServer.entities.devices.Projector;
+import org.jschwarz.alfredServer.entities.devices.Receiver;
+import org.jschwarz.alfredServer.entities.devices.TV;
+import org.jschwarz.alfredServer.entities.scenes.Chilling;
+import org.jschwarz.alfredServer.entities.scenes.WatchMovie;
 
 public class AlfredServer {
 
@@ -21,16 +25,17 @@ public class AlfredServer {
 	private static int deviceID = 99;
 	private static int commandID = 99;
 
-	public static int COMMAND_OFF = 0;
-	public static int COMMAND_ON = 1;
-	public static int COMMAND_MUTE = 2;
-	public static int COMMAND_UNMUTE = 3;
-	public static int COMMAND_INPUT_BT = 4;
-	public static int COMMAND_INPUT_TV = 5;
-	public static int COMMAND_INPUT_NB = 6;
-	public static int COMMAND_INPUT_FIRE = 7;
+	public static final int ID_DEVICE_MOOD = 0;
+	public static final int ID_DEVICE_COUCH = 1;
+	public static final int ID_DEVICE_DIMMER = 2;
+	public static final int ID_DEVICE_DOOR = 3;
+	public static final int ID_DEVICE_TV = 4;
+	public static final int ID_DEVICE_PROJECTOR = 5;
+	public static final int ID_DEVICE_RECEIVER = 6;
+	public static final int ID_DEVICE_SCENE = 11;
 
 	private static List<Device> devices = new LinkedList<Device>();
+	private static List<Scene> scenes = new LinkedList<Scene>();
 
 	private static void handleConnection(Socket client) throws IOException {
 		Scanner in = new Scanner(client.getInputStream());
@@ -44,6 +49,12 @@ public class AlfredServer {
 					&& receivedString.contains(PASSWORD)) {
 				deviceID = Integer.parseInt(receivedString.split(";")[2]);
 				commandID = Integer.parseInt(receivedString.split(";")[3]);
+
+				if (deviceID == AlfredServer.ID_DEVICE_SCENE) {
+					handleSceneRequest(commandID);
+					return;
+				}
+
 				for (Device device : devices) {
 					if (device.getDeviceID() == deviceID) {
 						try {
@@ -57,10 +68,19 @@ public class AlfredServer {
 		}
 	}
 
+	private static void handleSceneRequest(int sceneID) {
+		try {
+			scenes.get(sceneID).enableScene();
+		} catch (Exception e) {
+			Logger.log(e.getMessage());
+		}
+	}
+
 	public static void main(String[] args) throws IOException {
 		Logger.log("AlfredServer started");
 		ServerSocket server = new ServerSocket(SERVERPORT);
 		createDeviceMapping();
+		createSceneMapping();
 
 		while (true) {
 			Socket client = null;
@@ -84,12 +104,13 @@ public class AlfredServer {
 	}
 
 	private static void createDeviceMapping() {
-		Device lampCouch = new Lamp(1);
-		Device lampDimmer = new Lamp(2);
-		Device lampDoor = new Lamp(3);
-		Device tv = new TV(4);
-		Device projector = new Projector(5);
-		Device receiver = new Receiver(6);
+		Device lampMood = new Lamp(ID_DEVICE_MOOD);
+		Device lampCouch = new Lamp(ID_DEVICE_COUCH);
+		Device lampDimmer = new Lamp(ID_DEVICE_DIMMER);
+		Device lampDoor = new Lamp(ID_DEVICE_DOOR);
+		Device tv = new TV(ID_DEVICE_TV);
+		Device projector = new Projector(ID_DEVICE_PROJECTOR);
+		Device receiver = new Receiver(ID_DEVICE_RECEIVER);
 
 		devices.add(lampCouch);
 		devices.add(lampDimmer);
@@ -97,5 +118,14 @@ public class AlfredServer {
 		devices.add(tv);
 		devices.add(projector);
 		devices.add(receiver);
+		devices.add(lampMood);
+	}
+
+	private static void createSceneMapping() {
+		Scene sceneChilling = new Chilling(1, devices);
+		Scene sceneWatchMovie = new WatchMovie(2, devices);
+
+		scenes.add(sceneChilling);
+		scenes.add(sceneWatchMovie);
 	}
 }
